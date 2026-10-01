@@ -1,0 +1,4 @@
+patient_id,condition_code,condition_name,onset_date
+P-1001,E11.9,Type 2 Diabetes Mellitus,2015-06-10
+P-1001,I10,Essential Hypertension,2018-11-20
+P-1002,J45.909,"Asthma, uncomplicated",2010-02-14

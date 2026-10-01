@@ -1,0 +1,4 @@
+patient_id,medication,status,last_fill_date
+P-1001,Metformin 1000mg,Active,2026-08-01
+P-1001,Lisinopril 20mg,Active,2026-08-01
+P-1002,Albuterol Inhaler,Active,2026-09-15

@@ -1,0 +1,18 @@
+CLINICAL VISIT NOTE
+Date: 2026-09-25
+Patient: James Smith (P-1001)
+Attending: Dr. Sarah Jenkins, Cardiology/Endocrinology
+
+SUBJECTIVE:
+Patient presents for routine follow-up of Type 2 Diabetes and Hypertension. Patient reports feeling generally fatigued and notes recent episodes of dizziness when standing up quickly. He admits to occasionally forgetting his evening dose of Lisinopril.
+
+OBJECTIVE:
+BP: 145/90 (Elevated)
+HR: 78 bpm
+HbA1c: 8.2% (Up from 7.5% six months ago)
+
+ASSESSMENT & PLAN:
+1. Hypertension: Suboptimally controlled. Dizziness may be orthostatic hypotension related to Lisinopril or dehydration.
+2. Type 2 Diabetes: HbA1c is climbing. Metformin adherence seems okay, but dietary habits need review.
+
+Plan: Patient advised to monitor BP at home daily. Schedule follow-up in 4 weeks to consider switching from Lisinopril to Losartan if dizziness persists, pending review of latest cardiovascular safety guidelines for diabetic patients.

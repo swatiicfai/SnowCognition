@@ -1,0 +1,12 @@
+CLINICAL & REGULATORY GUIDELINE: HYPERTENSION MANAGEMENT IN DIABETIC PATIENTS (SYNTHETIC)
+Document ID: REG-CARDIO-2026-B
+Effective Date: 2026-01-01
+
+SUMMARY:
+This guideline outlines the recommended pharmacological interventions for adult patients with comorbid Type 2 Diabetes and Hypertension.
+
+KEY RECOMMENDATIONS:
+- First-line therapy includes ACE inhibitors (e.g., Lisinopril) or ARBs (e.g., Losartan).
+- Safety Warning: Patients on ACE inhibitors presenting with recurrent orthostatic hypotension (dizziness upon standing) should be immediately evaluated for volume depletion.
+- If orthostatic hypotension persists and impacts quality of life, it is strongly recommended to discontinue the ACE inhibitor and transition the patient to an ARB (such as Losartan).
+- Routine monitoring of renal function (eGFR) and serum potassium is required within 2 weeks of transitioning therapies to an ARB.
