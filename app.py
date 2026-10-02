@@ -88,11 +88,8 @@ def ask_gemini(api_key, patient_context, user_question):
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        # gemini-2.0-flash is current stable; fall back to gemini-pro for older SDK
-        try:
-            model = genai.GenerativeModel("gemini-2.0-flash")
-        except Exception:
-            model = genai.GenerativeModel("gemini-pro")
+        # Use latest model recommended by Google API error message
+        model = genai.GenerativeModel("gemini-3.8-flash")
 
         prompt = f"""You are a clinical AI Copilot for a healthcare analytics platform.
 You have access to the following patient data from Snowflake:
