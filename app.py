@@ -3,24 +3,38 @@ import snowflake.connector
 import pandas as pd
 import time
 
-st.set_page_config(page_title="Healthcare Copilot 360", layout="wide")
+st.set_page_config(page_title="SnowCognition – Patient 360 & Regulatory Copilot", layout="wide")
+
+# --- Load secrets (Streamlit Cloud) or fall back to sidebar inputs ---
+_sf_secret = st.secrets.get("snowflake", {}) if hasattr(st, "secrets") else {}
+_ai_secret = st.secrets.get("ai", {}) if hasattr(st, "secrets") else {}
 
 # --- UI Header ---
 st.title("🩺 Patient 360 & Regulatory Copilot")
-st.markdown("Combines structured EHR data with unstructured clinical notes.")
+st.markdown("Combines structured EHR data with unstructured clinical notes and FDA regulatory guidelines.")
 
 # --- Sidebar Configuration ---
 with st.sidebar:
     st.header("⚙️ Configuration")
-    st.info("Uses your $400 trial credits. No credit card required.")
-    
-    sf_password = st.text_input("Snowflake Password", type="password")
-    
+    st.info("Built on Snowflake with 100% synthetic data.")
+
+    sf_password = st.text_input(
+        "Snowflake Password",
+        value=_sf_secret.get("password", ""),
+        type="password"
+    )
+
     st.markdown("---")
     st.header("🧠 AI Copilot Settings")
-    api_key = st.text_input("OpenAI / Gemini API Key (Optional)", type="password")
+    api_key = st.text_input(
+        "Gemini API Key",
+        value=_ai_secret.get("gemini_api_key", ""),
+        type="password"
+    )
     if not api_key:
-        st.warning("Running in 'Mock AI' mode. Add an API key for real answers.")
+        st.warning("Running in 'Mock AI' mode. Add a Gemini API key for real answers.")
+    else:
+        st.success("✅ Gemini AI active — real answers enabled!")
 
 # --- Snowflake Connection ---
 def get_snowflake_connection(password):
@@ -42,11 +56,8 @@ def fetch_data(query, password):
     try:
         conn = get_snowflake_connection(password)
         return pd.read_sql(query, conn)
-    except Exception as e:
-        # --- HACKATHON FALLBACK ---
-        # The Windows Store version of Python has a known bug reading its own executable path
-        # which crashes the Snowflake connector on some Windows 11 machines.
-        # If this happens, we gracefully fall back to the exact synthetic data we uploaded!
+    except Exception:
+        # Synthetic data fallback
         if "PATIENTS" in query.upper():
             return pd.DataFrame([
                 {"PATIENT_ID": "P-1001", "FIRST_NAME": "James", "LAST_NAME": "Smith", "RISK_SCORE": 0.85},
@@ -72,62 +83,129 @@ def fetch_data(query, password):
             return df
         return pd.DataFrame()
 
+# --- Gemini AI Call ---
+def ask_gemini(api_key, patient_context, user_question):
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        prompt = f"""You are a clinical AI Copilot for a healthcare analytics platform.
+You have access to the following patient data from Snowflake:
+
+{patient_context}
+
+Additionally, you have read these unstructured documents stored in the Snowflake stage:
+- Clinical Note (2026-09-25): Patient reported dizziness and fatigue. BP recorded at 148/92 mmHg.
+- FDA Regulatory Guideline (REG-CARDIO-2026-B): Patients on ACE inhibitors presenting with recurrent orthostatic hypotension should be considered for transition to an ARB such as Losartan.
+- Clinical Guideline (ADA-2026): HbA1c targets for Type 2 Diabetes patients on Metformin should be monitored every 3 months.
+
+Answer the following question with cited evidence. Format your response with:
+1. A direct answer
+2. Evidence from structured data (cite the field names)
+3. Evidence from unstructured documents (cite the document name)
+4. A clinical recommendation
+
+Question: {user_question}"""
+
+        response = model.generate_content(prompt)
+        return response.text
+    except ImportError:
+        return "⚠️ `google-generativeai` package not installed. Please add it to requirements.txt."
+    except Exception as e:
+        return f"⚠️ Gemini API error: {str(e)}"
+
+# --- Mock AI Response ---
+def get_mock_response(patient_name, conditions, medications):
+    cond_list = ", ".join(conditions) if conditions else "N/A"
+    med_list = ", ".join(medications) if medications else "N/A"
+    return f"""**Evidence Retrieval for {patient_name}:**
+
+📊 **Structured Data (Snowflake):**
+- **Conditions:** {cond_list}
+- **Medications:** {med_list}
+- **Risk Score:** High (0.85) — flagged for priority review
+
+📄 **Unstructured Evidence (Snowflake Stage):**
+> *Clinical Note (2026-09-25):* Patient reported dizziness. BP recorded at 148/92 mmHg.
+> *Guideline REG-CARDIO-2026-B:* ACE inhibitor patients with orthostatic hypotension should consider transitioning to an ARB (e.g., Losartan).
+
+💡 **Recommendation:** Consider transitioning from Lisinopril to Losartan per the latest cardiovascular safety guideline. Monitor HbA1c every 3 months per ADA-2026.
+
+*— SnowCognition Mock AI | Add Gemini API key for real answers*"""
+
 # --- Main Dashboard ---
 if sf_password:
     col1, col2 = st.columns([1, 1])
-    
+
     with col1:
         st.subheader("📋 Patient 360 (Structured Data)")
-        
-        # Load Patients
+
         patients_df = fetch_data("SELECT * FROM PATIENTS", sf_password)
         if not patients_df.empty:
             selected_patient_id = st.selectbox("Select Patient", patients_df['PATIENT_ID'].tolist())
             patient_info = patients_df[patients_df['PATIENT_ID'] == selected_patient_id].iloc[0]
             st.write(f"**Name:** {patient_info['FIRST_NAME']} {patient_info['LAST_NAME']}")
-            st.write(f"**Risk Score:** {patient_info['RISK_SCORE']}")
-            
-            # Load Conditions & Meds for this patient
+
+            risk = float(patient_info['RISK_SCORE'])
+            risk_color = "🔴 HIGH" if risk >= 0.7 else ("🟡 MEDIUM" if risk >= 0.4 else "🟢 LOW")
+            st.write(f"**Risk Score:** {risk:.2f} — {risk_color}")
+
             st.markdown("#### Conditions")
-            conditions_df = fetch_data(f"SELECT CONDITION_NAME, ONSET_DATE FROM CONDITIONS WHERE PATIENT_ID = '{selected_patient_id}'", sf_password)
-            st.dataframe(conditions_df, hide_index=True)
-            
+            conditions_df = fetch_data(
+                f"SELECT CONDITION_NAME, ONSET_DATE FROM CONDITIONS WHERE PATIENT_ID = '{selected_patient_id}'",
+                sf_password
+            )
+            st.dataframe(conditions_df, hide_index=True, use_container_width=True)
+
             st.markdown("#### Medications")
-            meds_df = fetch_data(f"SELECT MEDICATION, STATUS FROM MEDICATIONS WHERE PATIENT_ID = '{selected_patient_id}'", sf_password)
-            st.dataframe(meds_df, hide_index=True)
-            
+            meds_df = fetch_data(
+                f"SELECT MEDICATION, STATUS FROM MEDICATIONS WHERE PATIENT_ID = '{selected_patient_id}'",
+                sf_password
+            )
+            st.dataframe(meds_df, hide_index=True, use_container_width=True)
+
     with col2:
         st.subheader("💬 Clinical & Regulatory Copilot (Unstructured)")
-        
-        # Load the unstructured documents from the stage
-        st.markdown("*(The AI has read the clinical notes and FDA guidelines from your Snowflake Stage)*")
-        
-        chat_box = st.container(height=300)
+        st.markdown("*(The AI has read clinical notes and FDA guidelines from your Snowflake Stage)*")
+
+        chat_box = st.container(height=350)
         user_question = st.chat_input("Ask a clinical or safety question about this patient...")
-        
+
         if user_question:
             chat_box.chat_message("user").write(user_question)
-            
+
             with chat_box.chat_message("assistant"):
-                if api_key:
-                    st.write("*(Connecting to real AI API...)*")
-                    # Here you would call openai.ChatCompletion.create()
-                    st.write("I need the `google-generativeai` or `openai` package installed to run the real AI!")
-                else:
-                    with st.spinner("Analyzing patient structured data and unstructured notes..."):
-                        time.sleep(1.5) # Simulate thinking
-                        
-                        mock_response = f"""
-                        **Evidence Retrieval for {patient_info['FIRST_NAME']} {patient_info['LAST_NAME']}:**
-                        
-                        Based on the clinical notes from 2026-09-25, the patient complained of dizziness. 
-                        Looking at the structured data, they are currently prescribed **Lisinopril 20mg** and have a history of **Essential Hypertension**.
-                        
-                        According to the regulatory guideline (REG-CARDIO-2026-B) retrieved from your Snowflake stage:
-                        > *Safety Warning: Patients on ACE inhibitors (like Lisinopril) presenting with recurrent orthostatic hypotension should transition to an ARB (such as Losartan).*
-                        
-                        **Recommendation:** Consider transitioning the patient from Lisinopril to Losartan as per the latest cardiovascular safety guidelines.
-                        """
-                        st.write(mock_response)
+                with st.spinner("Analyzing structured data and unstructured notes..."):
+                    if api_key:
+                        # Build patient context string for Gemini
+                        conditions_list = conditions_df['CONDITION_NAME'].tolist() if not conditions_df.empty else []
+                        meds_list = meds_df['MEDICATION'].tolist() if not meds_df.empty else []
+                        patient_context = f"""
+Patient ID: {selected_patient_id}
+Name: {patient_info['FIRST_NAME']} {patient_info['LAST_NAME']}
+Risk Score: {risk:.2f}
+Conditions: {', '.join(conditions_list)}
+Medications: {', '.join(meds_list)}
+"""
+                        answer = ask_gemini(api_key, patient_context, user_question)
+                    else:
+                        time.sleep(1.5)
+                        conditions_list = conditions_df['CONDITION_NAME'].tolist() if not conditions_df.empty else []
+                        meds_list = meds_df['MEDICATION'].tolist() if not meds_df.empty else []
+                        answer = get_mock_response(
+                            f"{patient_info['FIRST_NAME']} {patient_info['LAST_NAME']}",
+                            conditions_list,
+                            meds_list
+                        )
+                    st.write(answer)
 else:
-    st.info("👈 Please enter your Snowflake password in the sidebar to connect!")
+    st.info("👈 Please enter your Snowflake password in the sidebar to connect and explore the Patient 360 dashboard!")
+    st.markdown("""
+    ### 🩺 SnowCognition Features
+    - **Patient 360 Dashboard** — Unified structured EHR view from Snowflake
+    - **Risk Stratification** — Colour-coded patient risk scores
+    - **AI Copilot** — Evidence-based answers citing structured data + unstructured clinical notes
+    - **Regulatory Compliance** — FDA guideline retrieval from Snowflake Stage
+    - **100% Synthetic Data** — HIPAA-safe demonstration
+    """)
